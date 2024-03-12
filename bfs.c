@@ -11,10 +11,14 @@
 // ============================================================================
 i32 bfsAllocBlock(i32 inum, i32 fbn) {
 
-  if (inum < 0)       FATAL(EBADINUM);
-  if (inum > MAXINUM) FATAL(EBADINUM);
-  if (fbn  < 0)       FATAL(EBADFBN);
-  if (fbn  > MAXFBN)  FATAL(EBADFBN);
+  if (inum < 0)
+    FATAL(EBADINUM);
+  if (inum > MAXINUM)
+    FATAL(EBADINUM);
+  if (fbn < 0)
+    FATAL(EBADFBN);
+  if (fbn > MAXFBN)
+    FATAL(EBADFBN);
 
   // Grab the next free block in the BFS disk
 
@@ -22,21 +26,21 @@ i32 bfsAllocBlock(i32 inum, i32 fbn) {
 
   // Update the corresponding Inode, or IndirectBlock
 
-  i8 buf8[BYTESPERBLOCK] = {0};           // 1-block buffer
+  i8 buf8[BYTESPERBLOCK] = {0}; // 1-block buffer
   bioRead(DBNINODES, buf8);
- 
-  Inode* pinodes = (Inode*)buf8;          // array of Inodes
-  Inode* pinode  = &pinodes[inum];        // target Inode
 
-  if (fbn < NUMDIRECT) {                  // in direct[] array?
+  Inode *pinodes = (Inode *)buf8; // array of Inodes
+  Inode *pinode = &pinodes[inum]; // target Inode
+
+  if (fbn < NUMDIRECT) { // in direct[] array?
     pinode->direct[fbn] = dbn;
     bioWrite(DBNINODES, buf8);
     return dbn;
-  } else {                                // in indirect block?
-    i16 buf16[I16SPERBLOCK]= {0};
-    i32 dbnIndirect = pinode->indirect;   // DBN of indirect block
+  } else { // in indirect block?
+    i16 buf16[I16SPERBLOCK] = {0};
+    i32 dbnIndirect = pinode->indirect; // DBN of indirect block
 
-    if (dbnIndirect == 0) {               // not yet allocated
+    if (dbnIndirect == 0) { // not yet allocated
       dbnIndirect = bfsFindFreeBlock();
       pinode->indirect = dbn;
     }
@@ -47,11 +51,8 @@ i32 bfsAllocBlock(i32 inum, i32 fbn) {
     bioWrite(dbnIndirect, buf16);
   }
 
-  return dbn;                             // allocated DBN
-
+  return dbn; // allocated DBN
 }
-
-
 
 // ============================================================================
 // Create file 'fname'.  Find a free inum; ie, free slot in the Directory.
@@ -60,18 +61,20 @@ i32 bfsAllocBlock(i32 inum, i32 fbn) {
 // ============================================================================
 i32 bfsCreateFile(str fname) {
 
-  if (fname == NULL) FATAL(ENULLPTR);
+  if (fname == NULL)
+    FATAL(ENULLPTR);
 
-  if (strlen(fname) > FNAMESIZE - 1) FATAL(EBIGFNAME);  // fname too big
+  if (strlen(fname) > FNAMESIZE - 1)
+    FATAL(EBIGFNAME); // fname too big
 
   i8 buf[BYTESPERBLOCK] = {0};
 
   bioRead(DBNDIR, buf);
 
-  Dir* dir = (Dir*)buf;
+  Dir *dir = (Dir *)buf;
 
-  for (int inum = 0; inum < NUMINODES; ++inum) {        // search Directory
-    if (strlen(dir->fname[inum]) == 0) {                // free slot
+  for (int inum = 0; inum < NUMINODES; ++inum) { // search Directory
+    if (strlen(dir->fname[inum]) == 0) {         // free slot
       strcpy(dir->fname[inum], fname);
       bioWrite(DBNDIR, dir);
       bfsRefOFT(inum);
@@ -79,11 +82,9 @@ i32 bfsCreateFile(str fname) {
     }
   }
 
-  FATAL(EDIRFULL);                                      // Directory full
-  return 0;                                             // pacify compiler
+  FATAL(EDIRFULL); // Directory full
+  return 0;        // pacify compiler
 }
-
-
 
 // ============================================================================
 // Dereference file with Inode number 'inum' in the Open File Table.  If
@@ -99,8 +100,6 @@ i32 bfsDerefOFT(i32 inum) {
   return 0;
 }
 
-
-
 // ============================================================================
 // Extend file 'inum' out to FBN 'fbn'
 // ============================================================================
@@ -113,24 +112,26 @@ i32 bfsExtend(i32 inum, i32 fbn) {
   return 0;
 }
 
-
-
 // ============================================================================
 // Use Inode to find the DBN used to store file block 'fbn'.  Return ENODBN
 // if not yet mapped
 // ============================================================================
 i32 bfsFbnToDbn(i32 inum, i32 fbn) {
 
-  if (inum < 0)       FATAL(EBADINUM);
-  if (inum > MAXINUM) FATAL(EBADINUM);
-  if (fbn  < 0)       FATAL(EBADFBN);
-  if (fbn  > MAXFBN)  FATAL(EBADFBN);
+  if (inum < 0)
+    FATAL(EBADINUM);
+  if (inum > MAXINUM)
+    FATAL(EBADINUM);
+  if (fbn < 0)
+    FATAL(EBADFBN);
+  if (fbn > MAXFBN)
+    FATAL(EBADFBN);
 
   Inode inode;
-  
+
   bfsReadInode(inum, &inode);
 
-  if (fbn < NUMDIRECT) {            // in direct[] array?
+  if (fbn < NUMDIRECT) { // in direct[] array?
     i32 dbn = inode.direct[fbn];
     return (dbn == 0) ? ENODBN : dbn;
   }
@@ -139,7 +140,7 @@ i32 bfsFbnToDbn(i32 inum, i32 fbn) {
   // then allocate an empty indirect block.  But return ENODBN for the
   // caller to handle grabing a new data block.
 
-  if (inode.indirect == 0) {      // no indirect block yet allocated
+  if (inode.indirect == 0) { // no indirect block yet allocated
     i32 dbn = bfsFindFreeBlock();
     inode.indirect = dbn;
     bfsWriteInode(inum, &inode);
@@ -155,19 +156,15 @@ i32 bfsFbnToDbn(i32 inum, i32 fbn) {
   return (dbn == 0) ? ENODBN : dbn;
 }
 
-
-
 // ============================================================================
 // Convert FileDescriptor (user-visible) to Inum (internal)
 // ============================================================================
-i32 bfsFdToInum(i32 fd) { 
-  i32 inum = fd - INUMTOFD; 
-  if (inum < 0) FATAL(EBADINUM);
+i32 bfsFdToInum(i32 fd) {
+  i32 inum = fd - INUMTOFD;
+  if (inum < 0)
+    FATAL(EBADINUM);
   return inum;
 }
-
-
-
 
 // ============================================================================
 // Find 'inum' in the Open File Table (OFT).  If not found, create an entry.
@@ -175,9 +172,10 @@ i32 bfsFdToInum(i32 fd) {
 // ============================================================================
 i32 bfsFindOFTE(i32 inum) {
   for (int i = 0; i < NUMOFTENTRIES; ++i) {
-    if (g_oft[i].inum == inum) return i;
+    if (g_oft[i].inum == inum)
+      return i;
   }
-  
+
   // Not found, so look for an empty OFTE
 
   for (int i = 0; i < NUMOFTENTRIES; ++i) {
@@ -188,11 +186,9 @@ i32 bfsFindOFTE(i32 inum) {
       return i;
     }
   }
-  FATAL(EOFTFULL);      // no-return
-  return 0;             // pacify compiler
+  FATAL(EOFTFULL); // no-return
+  return 0;        // pacify compiler
 }
-
-
 
 // ============================================================================
 // Allocate the next free block from the Freelist.  Adjust Freelist
@@ -201,21 +197,21 @@ i32 bfsFindOFTE(i32 inum) {
 i32 bfsFindFreeBlock() {
   i8 buf8[BYTESPERBLOCK] = {0};
   bioRead(DBNSUPER, buf8);
-  Super* super = (Super*)buf8;
+  Super *super = (Super *)buf8;
 
   i32 dbn = super->firstFree;
-  if (dbn == 0) FATAL(EDISKFULL);
+  if (dbn == 0)
+    FATAL(EDISKFULL);
 
-  i16 buf16[I16SPERBLOCK] = {0};      // for next free block
+  i16 buf16[I16SPERBLOCK] = {0}; // for next free block
   bioRead(dbn, buf16);
 
-  super->firstFree = buf16[0];        // new head of Freelist
+  super->firstFree = buf16[0]; // new head of Freelist
 
-  bioWrite(DBNSUPER, buf8);           // update SuperBlock
+  bioWrite(DBNSUPER, buf8); // update SuperBlock
 
   return dbn;
 }
-
 
 // ============================================================================
 // Initialize the Freelist
@@ -226,38 +222,34 @@ i32 bfsInitFreeList() {
 
   for (int dbn = NUMMETA; dbn < BLOCKSPERDISK - 1; ++dbn) {
     buf[0] = dbn + 1;
-    bioWrite(dbn, (i8*)buf);
+    bioWrite(dbn, (i8 *)buf);
   }
 
   buf[0] = 0;
-  bioWrite(BLOCKSPERDISK - 1, (i8*)buf);      // end of Freelist
+  bioWrite(BLOCKSPERDISK - 1, (i8 *)buf); // end of Freelist
 
   return ret;
 }
 
-
-
 // ============================================================================
 // Write the initial Dir block, of all zeroes, into DBN 2
 // ============================================================================
-i32 bfsInitDir(FILE* fp) {
-  if (fp == NULL) FATAL(ENULLPTR);
+i32 bfsInitDir(FILE *fp) {
+  if (fp == NULL)
+    FATAL(ENULLPTR);
   i8 buf[BYTESPERBLOCK] = {0};
   return bioWrite(DBNDIR, buf);
 }
 
-
-
 // ============================================================================
 // Write the initial Inodes block, of all zeroes, into DBN 1
 // ============================================================================
-i32 bfsInitInodes(FILE* fp) {
-  if (fp == NULL) FATAL(ENULLPTR);
+i32 bfsInitInodes(FILE *fp) {
+  if (fp == NULL)
+    FATAL(ENULLPTR);
   i8 buf[BYTESPERBLOCK] = {0};
   return bioWrite(DBNINODES, buf);
 }
-
-
 
 // ============================================================================
 // Initialize the Open File Table to all zeroes
@@ -271,18 +263,18 @@ i32 bfsInitOFT() {
   return 0;
 }
 
-
 // ============================================================================
 // Write the initial Super block into DBN 0
 // ============================================================================
-i32 bfsInitSuper(FILE* fp) {
+i32 bfsInitSuper(FILE *fp) {
 
-  if (fp == NULL) FATAL(ENULLPTR);
+  if (fp == NULL)
+    FATAL(ENULLPTR);
 
   Super sb;
-  sb.numBlocks = BLOCKSPERDISK;           // eg: 100
-  sb.numInodes = NUMINODES;               // eg: 8
-  sb.firstFree = NUMMETA;                 // eg: 3
+  sb.numBlocks = BLOCKSPERDISK; // eg: 100
+  sb.numInodes = NUMINODES;     // eg: 8
+  sb.firstFree = NUMMETA;       // eg: 3
 
   i8 buf[BYTESPERBLOCK] = {0};
   memcpy(buf, &sb, sizeof(Super));
@@ -290,13 +282,10 @@ i32 bfsInitSuper(FILE* fp) {
   return bioWrite(DBNSUPER, buf);
 }
 
-
-
 // ============================================================================
 // Convert between inum (internal) and FileDescriptor (user-visible)
 // ============================================================================
 i32 bfsInumToFd(i32 inum) { return inum + INUMTOFD; }
-
 
 // ============================================================================
 // Lookup 'fname' in the Directory.  If found, return its inum.  If not,
@@ -304,13 +293,14 @@ i32 bfsInumToFd(i32 inum) { return inum + INUMTOFD; }
 // ============================================================================
 i32 bfsLookupFile(str fname) {
 
-  if (fname == NULL) FATAL(ENULLPTR);
+  if (fname == NULL)
+    FATAL(ENULLPTR);
 
   i8 buf[BYTESPERBLOCK] = {0};
 
   bioRead(DBNDIR, buf);
 
-  Dir* dir = (Dir*)buf;
+  Dir *dir = (Dir *)buf;
 
   for (int inum = 0; inum < NUMINODES; ++inum) {
     if (strcmp(fname, dir->fname[inum]) == 0) {
@@ -320,20 +310,21 @@ i32 bfsLookupFile(str fname) {
   }
 
   return EFNF;
-
 }
-
-
 
 // ============================================================================
 // Read FBN 'fbn' for the file whose inum is 'inum' into 'buf'
 // ============================================================================
-i32 bfsRead(i32 inum, i32 fbn, i8* buf) {
+i32 bfsRead(i32 inum, i32 fbn, i8 *buf) {
 
-  if (inum < 0)       FATAL(EBADINUM);
-  if (inum > MAXINUM) FATAL(EBADINUM);
-  if (fbn  < 0)       FATAL(EBADFBN);
-  if (fbn  > MAXFBN)  FATAL(EBADFBN);
+  if (inum < 0)
+    FATAL(EBADINUM);
+  if (inum > MAXINUM)
+    FATAL(EBADINUM);
+  if (fbn < 0)
+    FATAL(EBADFBN);
+  if (fbn > MAXFBN)
+    FATAL(EBADFBN);
 
   i32 dbn = bfsFbnToDbn(inum, fbn);
 
@@ -341,28 +332,28 @@ i32 bfsRead(i32 inum, i32 fbn, i8* buf) {
   return 0;
 }
 
-
 // ============================================================================
 // Read the Inodes block.  Extract and return the Inode whose number is 'inum'.
 // On success, return 0.  On failure, abort
 // ============================================================================
-i32 bfsReadInode(i32 inum, Inode* inode) {
+i32 bfsReadInode(i32 inum, Inode *inode) {
 
-  if (inum < 0)       FATAL(EBADINUM);
-  if (inum > MAXINUM) FATAL(EBADINUM);
-  if (inode == NULL)  FATAL(ENULLPTR);
+  if (inum < 0)
+    FATAL(EBADINUM);
+  if (inum > MAXINUM)
+    FATAL(EBADINUM);
+  if (inode == NULL)
+    FATAL(ENULLPTR);
 
   i8 buf[BYTESPERBLOCK] = {0};
 
   bioRead(DBNINODES, buf);
 
-  Inode* inodes = (Inode*)buf;
+  Inode *inodes = (Inode *)buf;
 
   memcpy(inode, &inodes[inum], sizeof(Inode));
   return 0;
 }
-
-
 
 // ============================================================================
 // Reference file with Inode number 'inum' in the Open File Table
@@ -373,22 +364,20 @@ i32 bfsRefOFT(i32 inum) {
   return 0;
 }
 
-
-
 // ============================================================================
 // Set cursor position for the file open on File Descriptor 'fd' to 'newCurs'
 // ============================================================================
 i32 bfsSetCursor(i32 inum, i32 newCurs) {
 
-  if (inum < 0) FATAL(EBADINUM);
-  if (inum > MAXINUM) FATAL(EBADINUM);
+  if (inum < 0)
+    FATAL(EBADINUM);
+  if (inum > MAXINUM)
+    FATAL(EBADINUM);
 
   i32 ofte = bfsFindOFTE(inum);
   g_oft[ofte].curs = newCurs;
   return 0;
 }
-
-
 
 // ============================================================================
 // Return the cursor position for the file open on File Descriptor 'fd'
@@ -399,15 +388,15 @@ i32 bfsTell(i32 fd) {
   return g_oft[ofte].curs;
 }
 
-
-
 // ============================================================================
 // Return the size of the file whose Inode number is 'inum'
 // ============================================================================
 i32 bfsGetSize(i32 inum) {
 
-  if (inum < 0)       FATAL(EBADINUM);
-  if (inum > MAXINUM) FATAL(EBADINUM);
+  if (inum < 0)
+    FATAL(EBADINUM);
+  if (inum > MAXINUM)
+    FATAL(EBADINUM);
 
   Inode inode;
   bfsReadInode(inum, &inode);
@@ -415,41 +404,41 @@ i32 bfsGetSize(i32 inum) {
   return inode.size;
 }
 
-
-
 // ============================================================================
 // Set size of file 'inum' to 'size
 // ============================================================================
 i32 bfsSetSize(i32 inum, i32 size) {
 
-  if (inum < 0)       FATAL(EBADINUM);
-  if (inum > MAXINUM) FATAL(EBADINUM);
+  if (inum < 0)
+    FATAL(EBADINUM);
+  if (inum > MAXINUM)
+    FATAL(EBADINUM);
 
   Inode inode;
   bfsReadInode(inum, &inode);
-  
+
   inode.size = size;
   bfsWriteInode(inum, &inode);
   return 0;
 }
 
-
-
 // ============================================================================
 // Update the Inodes block on disk with the info in 'inode'
 // ============================================================================
-i32 bfsWriteInode(i32 inum, Inode* inode) {
+i32 bfsWriteInode(i32 inum, Inode *inode) {
 
-  if (inum < 0)       FATAL(EBADINUM);
-  if (inum > MAXINUM) FATAL(EBADINUM);
-  if (inode == NULL)  FATAL(ENULLPTR);
+  if (inum < 0)
+    FATAL(EBADINUM);
+  if (inum > MAXINUM)
+    FATAL(EBADINUM);
+  if (inode == NULL)
+    FATAL(ENULLPTR);
 
   i8 buf[BYTESPERBLOCK];
   bioRead(DBNINODES, buf);
-  Inode* inodes = (Inode*)buf;
+  Inode *inodes = (Inode *)buf;
   memcpy(&inodes[inum], inode, sizeof(Inode));
   bioWrite(DBNINODES, buf);
 
   return 0;
 }
-
